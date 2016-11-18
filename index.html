@@ -1,0 +1,22 @@
+<!DOCTYPE type>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="js/cobs.js"></script>
+  </head>
+  <body>
+    <input type="text" value="123456789"></input>
+
+    <script>
+      /*
+      document.write("<br />");
+      document.write(stuff("12345\u00001234\u0000123\u000012", 5));
+      document.write("<br />");
+      document.write(unstuff("\u000612345\u00051234\u0004123\u000312\u0000"));
+      */
+
+      document.write("<br />");
+      document.write(stuff("Hello, World!\u0000"));
+    </script>
+  </body>
+</html>
