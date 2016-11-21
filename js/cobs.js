@@ -66,65 +66,91 @@ https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 http://www.stuartcheshire.org/papers/COBSforToN.pdf
 */
 
+// Character used to demarcate the end of a frame.
 const DELIMITER = "\u0000";
-const MAX_SECTION_LENGTH = 0xFF;
 
-function getChunks(text)
-{
-  var frames = "";
-  var count;
-  var index = 0;
+// The maximum length of a section that can be encoded in COBS.
+const MAX_SECTION_LENGTH = 0x05;
 
-  if ((typeof text === "string") && (text !== "") && (text !== null))
-  {
-    frames = new Array(text.length / MAX_SECTION_LENGTH + 0.5 | 0);
-    count = frames.length;
-
-    for (var i = 0; i < count; i++)
-    {
-      frames[i] = text.substr(index, MAX_SECTION_LENGTH);
-      index += frames[i].length;
-    }
-  }
-
-  return frames;
-}
-
+/*
+ * Returns a new string in which a character at a specified
+ * index is replaced with a given character.
+ * @param {string} text - The string to replace the character in.
+ * @param {number} index - Index of the character to replace.
+ * @param {string} char - The character to replace at the specified index.
+ * @return {string} - A string with the replaced character.
+ */
 function replaceCharAt(text, index, char)
 {
   var result = "";
 
-  if (index < text.length - 1)
+  // Does the index exist in the string?
+  if ((index >= 0) && (index < text.length - 1))
   {
+    // Replace the character at the specified position
     result = text.substr(0, index) + char + text.substr(index + 1);
   }
 
   return result;
 }
 
+/*
+ * 
+ * @param {string} text - 
+ */
+function getSections(text)
+{
+  var sections;
+  var count;
+  var index = 0;
+
+  if ((typeof text === "string") && (text !== ""))
+  {
+    sections = new Array(text.length / MAX_SECTION_LENGTH + 0.5 | 0);
+    count = sections.length;
+
+    for (var i = 0; i < count; i++)
+    {
+      sections[i] = text.substr(index, MAX_SECTION_LENGTH);
+      index += sections[i].length;
+    }
+  }
+
+  return sections;
+}
+
+/*
+ * Returns a COBS-encoded string.
+ * @param {string} text - The specified string to encode with COBS.
+ * return {string} - A COBS encoded string.
+ */
+// TODO: Rename variable lines to sections
+// TODO: Rename lines to something more useful, these are not lines
 function stuff(text)
 {
   var lines;
+  var sections;
   var result = "";
-  var chunks;
   var i = 0;
 
-  if ((typeof text === "string") && (text !== "") && (text !== null))
+  if ((typeof text === "string") && (text !== ""))
   {
+    // Split the text by our delimiter 
     lines = text.split(DELIMITER);
 
+    // Now, split the text by the maximum section length
     do
     {
-      chunks = getChunks(lines[i], MAX_SECTION_LENGTH);
+      sections = getSections(lines[i], MAX_SECTION_LENGTH);
 
-      if (chunks.length > 0)
+      if (sections.length > 0)
       {
-        lines.splice.apply(lines, [i, 1].concat(chunks));
+        lines.splice.apply(lines, [i, 1].concat(sections));
       }
 
-      i += chunks.length;
+      i += sections.length;
     }
-    while (chunks.length > 0)
+    while (sections.length > 0)
 
     for (var i = 0; i < lines.length; i++)
     {
@@ -144,14 +170,19 @@ function stuff(text)
   return result;
 }
 
+/*
+ * Returns a COBS-decoded string.
+ * @param {string} text - The specified COBS-encoded string to decode.
+ * @return {string} - A COBS-decoded string.
+ */
 function unstuff(text)
 {
   var index = 0;
   var result = "";
 
-  if ((typeof text === "string") && (text !== "") && (text !== null))
+  if ((typeof text === "string") && (text !== ""))
   {
-    for (var i = 0; i < text.length;)
+    for (var i = 0; i < text.length - 1;)
     {
       index = text.charCodeAt(i);
       result = replaceCharAt(text, i, DELIMITER);
@@ -159,6 +190,7 @@ function unstuff(text)
     }
 
     result = result.slice(1);
+    result += DELIMITER;
   }
 
   return result;
