@@ -1,4 +1,4 @@
-<!DOCTYPE type>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -6,17 +6,27 @@
   </head>
   <body>
     <script>
-      document.write("<br />");
-      document.write(stuff("12345\u00001234\u0000123\u000012", 5));
-      document.write("<br />");
-      document.write(unstuff("\u000612345\u00051234\u0004123\u000312"));
+      //var data = "1234123412\u000034\u0000";
+      //var data = "X\u0000";
+      var data = "Hello, World!\u0000";
+      var cobsEncoded = stuff(data);
+      var cobsDecoded = unstuff(stuff(data));
 
-      /*
+      document.write(data);
       document.write("<br />");
-      document.write(stuff("Hello, World!\u0000"));
+      document.write(cobsEncoded);
       document.write("<br />");
-      document.write(unstuff("\u000EHello, World!"));
-      */
+      document.write(cobsDecoded);
+      document.write("<br />");
+
+      if (data === cobsDecoded)
+      {
+        document.write("data === cobsDecoded");
+      }
+      else
+      {
+        document.write("data !== cobsDecoded");
+      }
     </script>
   </body>
 </html>
