@@ -22,70 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/*
-CONSISTENT OVERHEAD BYTE STUFFING (COBS)
-
-DESCRIPTION:
-COBS is an algorithm for encoding data for transmission that results
-in efficient packet framing while only introducing a single additional
-byte.
-
-In COBS, the null character ("\0") is a reserved value that is not
-allowed to appear. As a result, COBS replaces all null characters
-with a non-zero value so that no zero value exists in the string.
-This is known as "stuffing" the data. Transforming the data back to
-its original value is known "unstuffing" the data.
-
-To stuff the data, each zero data byte (null character) is replaced with
-1 plus the number of non-zero bytes that follow up to a maximum of 254
-non-zero bytes.  An overhead byte is added to the front of the frame
-which is the distance to the first zero data byte.
-
-EXAMPLES:
-
-  Example 1
-    Input                 -> Output
-    "X"                   -> "\u0002X"
-    "XY"                  -> "\u0003XY"
-    "Hello, World!\u0000" -> "\u0014Hello, World!"
-
-  Example 2*
-    Input   -> Output
-    [00]    -> [(Overhead byte N+1) + (Zero Byte N+1)]
-    [00]    -> [(Overhead byte 0+1) + (Zero Byte 0+1)]
-    [00]    -> [01 01]
-
-  Example 3*
-    Input      -> Output
-    [00 00]    -> [(Overhead byte N+1) + (Zero Byte N+1) + (Zero Byte N+1)]
-    [00 00]    -> [(Overhead byte 0+1) + (Zero Byte 0+1) + (Zero Byte N+1)]
-    [00 00]    -> [01 01 01]
-
-  Example 4*
-    Input         -> Output
-    [FF 00 AA 00] -> [(Overhead byte N + 1) + FF + (Zero byte N + 1) + AA]
-    [FF 00 AA 00] -> [(Overhead byte 1 + 1) + FF + (Zero byte 1 + 1) + AA]
-    [FF 00 AA 00] -> [02 FF 02 AA]
-
-  Example 5*
-    Input         -> Output
-    [FF AA 00 AA 00] -> [(Overhead byte N + 1) + FF + AA + (Zero byte N + 1) + AA]
-    [FF AA 00 AA 00] -> [(Overhead byte 2 + 1) + FF + AA + (Zero byte 1 + 1) + AA]
-    [FF AA 00 AA 00] -> [03 FF AA 02 AA]
-
-  Example 6*
-    Input               -> Output
-    [FF AA 00 00 AA 00] -> [(Overhead byte N + 1) + FF + AA + (Overhead byte N + 1) + (Zero byte N + 1) + AA]
-    [FF AA 00 00 AA 00] -> [(Overhead byte 2 + 1) + FF + AA + (Overhead byte 0 + 1) + (Zero byte 1 + 1) + AA]
-    [FF AA 00 00 AA 00] -> [03 FF AA 01 02 AA]
-
-(* Input strings are represented as an array of hexadecimal values.)
-
-REFERENCES:
-  https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
-  http://www.stuartcheshire.org/papers/COBSforToN.pdf
-*/
-
 // Character used to demarcate the end of a frame.
 const DELIMITER = "\u0000";
 
@@ -118,7 +54,7 @@ function replaceCharAt(text, index, char)
  * Returns a array of strings in which the given text is
  * split first by DELIMITER and then by MAX_SECTION_LENGTH.
  * @param {string} text - 
- * @return {array} - 
+ * @return {array} - Sections of 
  */
 function getSections(text)
 {
@@ -132,8 +68,6 @@ function getSections(text)
   {
     // Split the text by our delimiter
     frames = text.split(DELIMITER);
-
-    //frames.pop();
 
     // For each frame...
     for (var i = 0; i < frames.length; i++)
