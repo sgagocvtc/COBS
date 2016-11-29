@@ -133,7 +133,7 @@ function getSections(text)
     // Split the text by our delimiter
     frames = text.split(DELIMITER);
 
-    frames.pop();
+    //frames.pop();
 
     // For each frame...
     for (var i = 0; i < frames.length; i++)
@@ -191,6 +191,8 @@ function stuff(text)
       sections[i] = String.fromCharCode(sections[i].length + 1) + sections[i];
     }
 
+    sections.push("\u0000");
+
     // Join all sections together and store as final result
     result = sections.join("");
   }
@@ -224,6 +226,8 @@ function unstuff(text)
         result += DELIMITER;
       }
     }
+
+    result = result.slice(0, result.length - 1);
   }
 
   return result;

@@ -2,30 +2,378 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <title>Consistent Overhead Byte Stuffing (COBS)</title>
     <script src="js/cobs.js"></script>
   </head>
   <body>
+    <h1>Consistent Overhead Byte Stuffing (COBS)</h1>
+    <p>
+      <i>
+        Note that you can open this HTML page and play with the external code in
+        js/cobs.js using the web console in Firefox.
+      </i>
+    </p>
+    <h2>Overview</h2>
+    <p>
+      COBS is an algorithm for encoding data for transmission that results
+      in efficient packet framing while only introducing minimal overhead.
+      <br>
+      <br>
+      In COBS, the null character ("\0" or "\u0000") is a reserved value that is not
+      allowed to appear. As a result, COBS replaces all null characters
+      with a non-zero value so that no zero value exists in the string.
+      This is known as "stuffing" the data. Transforming the data back to
+      its original value is known "unstuffing" the data.  Once all zeroes have been
+      removed, a final null character is appended to the end and the data is ready for
+      transmission.
+      <br>
+      <br>
+      (tl;dr COBS removes all "\0" or "\u0000" characters from a string.  This is
+      called stuffing the data.  Putting the zeros back is called unstuffing the data.)
+      <br>
+      <br>
+      To stuff the data, each zero data byte (null character) is replaced with
+      1 plus the number of non-zero bytes that follow up to a maximum of 254
+      non-zero bytes.  An overhead byte is added to the front of the frame
+      which is the distance to the first zero data byte.
+      <br>
+      <br>
+      (tl;dr COBS replaces each zero with the number of non-zero characters
+      that follow plus 1.  We add an extra byte to the start of the string called
+      an overhead byte which, again, is the number of non-zero characters that follow plus
+      1.)
+      <br>
+      <br>
+      If there are more than 254 non-zero characters before the next zero character,
+      we insert "\u00FF".  <u>Note: A length of 254 characters would be super annoying
+      to play with.  As a result, our new maximum section length will be 5.  This
+      makes the code easier to play with.</u>
+      Feel free to change the maximum section length back to 255 to see COBS in its
+      original form.
+      </p>
+
+      <h2>Code Values</h2>
+      <p>The following are the code values used in COBS encoded strings.</p>
+      <!-- Eh, could have used CSS but didn't feel like it. -->
+      <table style="border:1px solid black;">
+        <tr>
+          <td style="border:1px solid black;"><b>Code</b></td>
+          <td style="border:1px solid black;"><b>Followed by</td>
+          <td style="border:1px solid black;"><b>Meaning</b></td>
+        </tr>
+        <tr>
+          <td style="border:1px solid black;">"\u0000"</td>
+          <td style="border:1px solid black;">(cannot be followed by anything)</td>
+          <td style="border:1px solid black;">(only allowed at the end of the encoded data)</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid black;">"\u0001"</td>
+          <td style="border:1px solid black;">no data bytes</td>
+          <td style="border:1px solid black;">a single zero byte</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid black;">"\u0002", "\u0003", "\u0004"</td>
+          <td style="border:1px solid black;">2, 3, or 4 data bytes</td>
+          <td style="border:1px solid black;">the 2, 3, or 4 data bytes, followed by a single zero</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid black;">"\u0005"</td>
+          <td style="border:1px solid black;">4 data bytes</td>
+          <td style="border:1px solid black;">the 4 data bytes, <b>not</b> followed by zero</td>
+        </tr>
+      </table>
+    </p>
+
+    <h2>COBS Encoding Examples</h2>
+    <p>
+      Before we begin with the examples, note that Internet browsers cannot display control characters
+      like "\u0000" or "\u0005".  In your browser, "\u0000" and "\u0005" display as
+      <script>
+        document.write("\"\u0000\" and \"\u0005\", respectively.");
+      </script>
+      Sometimes the browser might not display anything or display a
+      super weird character.  Chrome might display something different
+      than Firefox.  Again, these are normally used for control.  We are using them
+      for our abnormal, boring encryption algorithm.  Yay.
+      <br>
+      <br>
+      Remember, "\u0000" looks like 6 characters to a human, but JavaScript sees this as
+      a <b>single</b> character.
+      <br>
+      <br>
+      Finally, a note on colors:
+      <ul>
+        <li>The <font color="red">overhead character</font> will be in red.  This is the byte
+        added to the start of the encoded data.</li>
+        <li><font color="green">Altered or added characters</font> will be green.
+        (The only character that should be altered is zero.)
+        </li>
+        <li>The <font color="blue">final zero</font> appended to the end will be blue.</li>
+        <li>Unaltered characters will be black.</li>
+      </ul>
+    </p>
+
+    <!-- Eh, could have used CSS and clever JavaScript looping but didn't feel like it. -->
+    <table style="border:1px solid black;">
+      <tr>
+        <td style="border:1px solid black;"><b>Example</b></td>
+        <td style="border:1px solid black;"><b>Unencoded string</b></td>
+        <td style="border:1px solid black;"><b>COBS encoded string</b></td>
+        <td style="border:1px solid black;"><b>Real output</b></td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">1</td>
+        <td style="border:1px solid black;">"\u0000"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0001</font><font color="green">\u0001</font><font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            var result = stuff("\u0000");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">2</td>
+        <td style="border:1px solid black;">"\u0000\u0000"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0001</font><font color="green">\u0001</font><font color="green">\u0001</font><font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("\u0000\u0000");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">3</td>
+        <td style="border:1px solid black;">"x"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0002</font>x<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("x");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">4</td>
+        <td style="border:1px solid black;">"xx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0003</font>xx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">5</td>
+        <td style="border:1px solid black;">"xxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0004</font>xxx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">6</td>
+        <td style="border:1px solid black;">"xxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0005</font>xxxx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">7</td>
+        <td style="border:1px solid black;">"xxxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0005</font>xxxx<font color="green">\u0002</font>x<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">8</td>
+        <td style="border:1px solid black;">"xxxxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0005</font>xxxx<font color="green">\u0003</font>xx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxxxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">9</td>
+        <td style="border:1px solid black;">"xxxxxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0005</font>xxxx<font color="green">\u0004</font>xxx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxxxxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">10</td>
+        <td style="border:1px solid black;">"xxxxxxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0005</font>xxxx<font color="green">\u0005</font>xxxx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxxxxxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">11</td>
+        <td style="border:1px solid black;">"xxxxxxxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0005</font>xxxx<font color="green">\u0005</font>xxxx<font color="green">\u0002</font>x<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("xxxxxxxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">12</td>
+        <td style="border:1px solid black;">"x\u0000"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0002</font>x<font color="green">\u0001</font><font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("x\u0000");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">13</td>
+        <td style="border:1px solid black;">"x\u0000xx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0002</font>x<font color="green">\u0003</font>xx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("x\u0000xx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">14</td>
+        <td style="border:1px solid black;">"x\u0000xx\u0000xxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0002</font>x<font color="green">\u0003</font>xx<font color="green">\u0004</font>xxx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("x\u0000xx\u0000xxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">15</td>
+        <td style="border:1px solid black;">"x\u0000xx\u0000xxx\u0000xxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0002</font>x<font color="green">\u0003</font>xx<font color="green">\u0004</font>xxx<font color="green">\u0005</font>xxxx<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("x\u0000xx\u0000xxx\u0000xxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid black;">16</td>
+        <td style="border:1px solid black;">"x\u0000xx\u0000xxx\u0000xxxx\u0000xxxxx"</td>
+        <td style="border:1px solid black;">
+          "<font color="red">\u0002</font>x<font color="green">\u0003</font>xx<font color="green">\u0004</font>xxx<font color="green">\u0005</font>xxxx<font color="green">\u0002</font>x<font color="blue">\u0000</font>"
+        </td>
+        <td style="border:1px solid black;">
+          <script>
+            result = stuff("x\u0000xx\u0000xxx\u0000xxxx\u0000xxxxx");
+            document.write(result);
+          </script>
+        </td>
+      </tr>
+    </table>
+
+    <p>
+      Examples 1 and 2 demonstrate how a string of pure null characters would be treated.  Examples 3 through 11
+      demonstrate how a string without null characters would be treated.  Finally, 12 through 16
+      show a combination of null and non-null character examples.
+      <br>
+      <br>
+      The unstuffing algorithm would then perfom the opposite operation and convert the string
+      back to its original form.
+    </p>
+
+    <h2>References</h2>
+    <p>Here are the references I used to create this code:</p>
+    <ul>
+      <li><a href="http://www.stuartcheshire.org/papers/cobsforton.pdf">CobsForToN</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing">Wikipedia</a></li>
+    </ul>
+
+    <h2>COBS JavaScript Playground</h2>
+    <p>
+      Here's some more JavaScript examples and code to play with.
+    </p>
     <script>
-      //var data = "1234123412\u000034\u0000";
-      //var data = "X\u0000";
-      var data = "Hello, World!\u0000";
+      // Here's some more code you can play with
+
+      var data = "Hello, World!";
       var cobsEncoded = stuff(data);
       var cobsDecoded = unstuff(stuff(data));
 
       document.write(data);
-      document.write("<br />");
+      document.write("<br>");
       document.write(cobsEncoded);
-      document.write("<br />");
+      document.write("<br>");
       document.write(cobsDecoded);
-      document.write("<br />");
+      document.write("<br>");
 
       if (data === cobsDecoded)
       {
-        document.write("data === cobsDecoded");
+        document.write("It worked!  data === cobsDecoded");
       }
       else
       {
-        document.write("data !== cobsDecoded");
+        // Hopefully, this is never displayed if things are working right!
+        document.write("Uhoh!  data !== cobsDecoded");
       }
     </script>
   </body>
