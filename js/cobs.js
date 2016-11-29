@@ -26,6 +26,7 @@ SOFTWARE.
 const DELIMITER = "\u0000";
 
 // The maximum length of a section that can be encoded in COBS.
+// Normally, this is 0xFF, but this makes it play with, test, etc.
 const MAX_SECTION_LENGTH = 0x05;
 
 /*
@@ -53,8 +54,8 @@ function replaceCharAt(text, index, char)
 /*
  * Returns a array of strings in which the given text is
  * split first by DELIMITER and then by MAX_SECTION_LENGTH.
- * @param {string} text - 
- * @return {array} - Sections of 
+ * @param {string} text - The string to divide into sections.
+ * @return {array} - An array of the given string divided into sections.
  */
 function getSections(text)
 {
@@ -89,12 +90,15 @@ function getSections(text)
         startIndex += section.length;
       }
 
+      // Is this frame an empty string?
       if (frames[i].length === 0)
       {
+        // Append an empty string onto sections
         sections.push("");
       }
 
-      startIndex = 0;  // Reset the index for the next frame
+      // Reset the startIndex for the next frame
+      startIndex = 0;
     }
   }
 
@@ -108,7 +112,6 @@ function getSections(text)
  */
 function stuff(text)
 {
-  var lines;
   var sections;
   var result = "";
   var i = 0;
@@ -125,6 +128,7 @@ function stuff(text)
       sections[i] = String.fromCharCode(sections[i].length + 1) + sections[i];
     }
 
+    // Append the final zero byte
     sections.push("\u0000");
 
     // Join all sections together and store as final result
@@ -151,6 +155,17 @@ function unstuff(text)
       // Get length of the next section
       sectionLength = text.charCodeAt(i);
 
+      // Is the sectionLength + i - 1 a valid index position in the string?
+      if (text.length < (i + sectionLength - 1))
+      {
+        // Uhoh, text is an improper COBS encoded string
+        // Let's tell the user and give up
+        alert("Error: Invalid COBS encoded string \"" + text + "\".");
+        results = "";
+        break;
+      }
+
+      // Append the next section
       result += text.substr(i + 1, sectionLength - 1);
 
       // Is the next section length less than MAX_SECTION_LENGTH?
@@ -161,7 +176,12 @@ function unstuff(text)
       }
     }
 
-    result = result.slice(0, result.length - 1);
+    // Is there a final null character in result?
+    if (result[result.length - 1] === "\u0000")
+    {
+      // Remove null character at the end of the string
+      result = result.slice(0, result.length - 1);
+    }
   }
 
   return result;
